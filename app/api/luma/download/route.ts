@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
         .map(video => ({
           id: video.id,
           filename: lumaService.generateFilename(video),
-          url: video.assets.video,
+          url: video.assets?.video || '',
           size: 0, // Skip metadata for speed
           formattedSize: 'Unknown',
           created_at: video.created_at,
