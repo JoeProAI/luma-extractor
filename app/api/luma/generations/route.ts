@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
     const lumaService = new LumaService(apiKey);
 
     if (fetchAll) {
-      // Limit to first 1000 videos to prevent timeouts and memory issues
-      const maxVideos = parseInt(searchParams.get('maxVideos') || '1000');
+      // Limit to prevent timeouts and memory issues, but allow more for large collections
+      const maxVideos = parseInt(searchParams.get('maxVideos') || '3000');
       console.log(`Fetching up to ${maxVideos} videos...`);
       
       // Fetch video generations with limit
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       console.log(`Processing metadata for ${videoUrls.length} videos...`);
       
       // Get metadata in batches to prevent EMFILE errors
-      const metadataResults = await lumaService.getBatchVideoMetadata(videoUrls, 5); // Small batches
+      const metadataResults = await lumaService.getBatchVideoMetadata(videoUrls, 8); // Optimized batch size
       
       // Combine videos with their metadata
       const videosWithMetadata = allVideos.map((video, index) => {

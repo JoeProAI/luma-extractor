@@ -84,7 +84,7 @@ class LumaService {
     throw new Error('Unexpected error in fetchGenerations');
   }
 
-  async fetchAllVideoGenerations(maxVideos = 1000): Promise<LumaGeneration[]> {
+  async fetchAllVideoGenerations(maxVideos = 3000): Promise<LumaGeneration[]> {
     const allVideos: LumaGeneration[] = [];
     let offset = 0;
     const limit = 50;
