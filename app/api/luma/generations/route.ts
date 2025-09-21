@@ -20,36 +20,49 @@ export async function GET(request: NextRequest) {
     const lumaService = new LumaService(apiKey);
 
     if (fetchAll) {
-      // Fetch all video generations
-      const allVideos = await lumaService.fetchAllVideoGenerations();
+      // Limit to first 1000 videos to prevent timeouts and memory issues
+      const maxVideos = parseInt(searchParams.get('maxVideos') || '1000');
+      console.log(`Fetching up to ${maxVideos} videos...`);
       
-      // Get metadata for each video
-      const videosWithMetadata = await Promise.all(
-        allVideos.map(async (video) => {
-          if (!video.assets?.video) return video;
-          
-          try {
-            const metadata = await lumaService.getVideoMetadata(video.assets.video);
-            return {
-              ...video,
-              metadata: {
-                ...video.metadata,
-                size: metadata.size,
-                formattedSize: lumaService.formatFileSize(metadata.size),
-                contentType: metadata.contentType,
-              },
-            };
-          } catch (error) {
-            console.error(`Error getting metadata for video ${video.id}:`, error);
-            return video;
-          }
-        })
-      );
+      // Fetch video generations with limit
+      const allVideos = await lumaService.fetchAllVideoGenerations(maxVideos);
+      console.log(`Retrieved ${allVideos.length} videos from Luma API`);
+      
+      // Get video URLs for batch metadata processing
+      const videoUrls = allVideos
+        .filter(video => video.assets?.video)
+        .map(video => video.assets!.video!);
+      
+      console.log(`Processing metadata for ${videoUrls.length} videos...`);
+      
+      // Get metadata in batches to prevent EMFILE errors
+      const metadataResults = await lumaService.getBatchVideoMetadata(videoUrls, 5); // Small batches
+      
+      // Combine videos with their metadata
+      const videosWithMetadata = allVideos.map((video, index) => {
+        if (!video.assets?.video) return video;
+        
+        const metadata = metadataResults[allVideos.filter(v => v.assets?.video).indexOf(video)];
+        
+        return {
+          ...video,
+          metadata: {
+            ...video.metadata,
+            size: metadata?.size || 0,
+            formattedSize: lumaService.formatFileSize(metadata?.size || 0),
+            contentType: metadata?.contentType || 'video/mp4',
+          },
+        };
+      });
+
+      console.log(`Completed processing ${videosWithMetadata.length} videos`);
 
       return NextResponse.json({
         generations: videosWithMetadata,
         total_count: videosWithMetadata.length,
-        has_more: false,
+        has_more: allVideos.length >= maxVideos, // Indicate if there might be more
+        fetched_count: allVideos.length,
+        max_videos: maxVideos,
       });
     } else {
       // Fetch paginated results
@@ -87,8 +100,8 @@ export async function POST(request: NextRequest) {
 
     const lumaService = new LumaService(apiKey);
     
-    // Fetch all generations first
-    const allVideos = await lumaService.fetchAllVideoGenerations();
+    // Fetch videos with a reasonable limit to find the requested ones
+    const allVideos = await lumaService.fetchAllVideoGenerations(2000);
     
     // Filter for requested video IDs
     const requestedVideos = allVideos.filter(video => videoIds.includes(video.id));
