@@ -92,7 +92,7 @@ class LumaService {
     let consecutiveErrors = 0;
     const maxConsecutiveErrors = 3;
     let consecutiveEmptyBatches = 0;
-    const maxConsecutiveEmptyBatches = 10; // Stop after 10 empty batches in a row
+    const maxConsecutiveEmptyBatches = 50; // Allow for large gaps in video history
 
     console.log(`Starting to fetch videos (max: ${maxVideos})...`);
 
@@ -114,11 +114,11 @@ class LumaService {
         offset += limit;
         consecutiveErrors = 0; // Reset error counter on success
 
-        // Track empty batches to avoid searching forever
+        // Track empty batches to avoid searching forever, but allow for large gaps
         if (videos.length === 0) {
           consecutiveEmptyBatches++;
           if (consecutiveEmptyBatches >= maxConsecutiveEmptyBatches) {
-            console.log(`Stopping after ${consecutiveEmptyBatches} consecutive empty batches`);
+            console.log(`Stopping after ${consecutiveEmptyBatches} consecutive empty batches (offset: ${offset})`);
             break;
           }
         } else {
