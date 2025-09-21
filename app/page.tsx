@@ -17,6 +17,7 @@ import {
 import VideoCard from '@/components/VideoCard';
 import ProgressModal from '@/components/ProgressModal';
 import DownloadButton from '@/components/DownloadButton';
+import FirebaseUploadButton from '@/components/FirebaseUploadButton';
 
 interface LumaGeneration {
   id: string;
@@ -330,14 +331,10 @@ export default function HomePage() {
               disabled={selectedVideos.size === 0}
             />
 
-            <button
-              onClick={handleUploadToGoogleDrive}
+            <FirebaseUploadButton
+              selectedVideoIds={Array.from(selectedVideos)}
               disabled={selectedVideos.size === 0}
-              className="btn-primary flex items-center space-x-2"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Upload to Drive ({selectedVideos.size})</span>
-            </button>
+            />
           </div>
         </div>
       </div>
