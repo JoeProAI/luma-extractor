@@ -88,7 +88,13 @@ export default function HomePage() {
 
         // Show success message for large collections
         if (data.metadata_skipped && data.total_count > 1000) {
-          console.log(`✅ Successfully loaded ${data.total_count} videos! File sizes will load in the background.`);
+          console.log(`✅ Successfully loaded ${data.displayed_count || data.total_count} videos! File sizes will load in the background.`);
+          
+          // Show message if we're only displaying a subset
+          if (data.total_count > data.displayed_count) {
+            console.log(`📊 Found ${data.total_count} total videos, displaying first ${data.displayed_count}`);
+            alert(`Found ${data.total_count} videos! Displaying first ${data.displayed_count} to prevent browser crashes.\n\nFor all videos:\n• Use Firebase browser at /firebase-browser\n• Use Firebase CLI for bulk download\n• Use Download Links for selected videos`);
+          }
         }
         
         if (data.generations?.length === 0) {

@@ -30,10 +30,13 @@ export async function GET(request: NextRequest) {
       console.log(`Retrieved ${allVideos.length} videos from Luma API`);
       
       if (skipMetadata) {
-        // Return videos immediately without metadata to avoid timeouts
-        console.log(`Returning ${allVideos.length} videos without metadata to avoid timeout`);
+        // For large collections, limit response size to prevent memory/timeout issues
+        const maxResponseSize = 1000; // Limit to 1000 videos per response
+        const limitedVideos = allVideos.slice(0, maxResponseSize);
         
-        const videosWithBasicInfo = allVideos.map(video => ({
+        console.log(`Returning ${limitedVideos.length} of ${allVideos.length} videos without metadata to avoid timeout`);
+        
+        const videosWithBasicInfo = limitedVideos.map(video => ({
           ...video,
           metadata: {
             ...video.metadata,
@@ -47,12 +50,16 @@ export async function GET(request: NextRequest) {
         
         return NextResponse.json({
           generations: videosWithBasicInfo,
-          total_count: videosWithBasicInfo.length,
-          has_more: allVideos.length >= maxVideos,
+          total_count: allVideos.length, // Show total found
+          displayed_count: videosWithBasicInfo.length, // Show what we're returning
+          has_more: allVideos.length > maxResponseSize,
           fetched_count: allVideos.length,
           max_videos: maxVideos,
           metadata_skipped: true,
           success: true,
+          note: allVideos.length > maxResponseSize ? 
+            `Showing first ${maxResponseSize} of ${allVideos.length} videos. Use pagination or Firebase browser for more.` : 
+            undefined
         });
       }
       
