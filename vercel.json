@@ -1,0 +1,18 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 300
+    }
+  },
+  "env": {
+    "LUMA_API_KEY": "@luma_api_key",
+    "GOOGLE_DRIVE_CLIENT_ID": "@google_drive_client_id",
+    "GOOGLE_DRIVE_CLIENT_SECRET": "@google_drive_client_secret",
+    "GOOGLE_DRIVE_REDIRECT_URI": "@google_drive_redirect_uri",
+    "GOOGLE_DRIVE_REFRESH_TOKEN": "@google_drive_refresh_token"
+  }
+}
