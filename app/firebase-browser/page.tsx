@@ -88,7 +88,7 @@ export default function FirebaseBrowser() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const folders = [...new Set(files.map(file => file.fullPath.split('/')[0]))].filter(Boolean);
+  const folders = Array.from(new Set(files.map(file => file.fullPath.split('/')[0]))).filter(Boolean);
   const currentFiles = files.filter(file => 
     currentFolder ? file.fullPath.startsWith(currentFolder + '/') : true
   );
