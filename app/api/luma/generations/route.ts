@@ -22,13 +22,38 @@ export async function GET(request: NextRequest) {
     if (fetchAll) {
       // Limit to prevent timeouts and memory issues, but allow more for large collections
       const maxVideos = parseInt(searchParams.get('maxVideos') || '3000');
+      const skipMetadata = searchParams.get('skipMetadata') === 'true';
       console.log(`Fetching up to ${maxVideos} videos...`);
       
       // Fetch video generations with limit
       const allVideos = await lumaService.fetchAllVideoGenerations(maxVideos);
       console.log(`Retrieved ${allVideos.length} videos from Luma API`);
       
-      // Get video URLs for batch metadata processing
+      if (skipMetadata) {
+        // Return videos immediately without metadata to avoid timeouts
+        console.log(`Returning ${allVideos.length} videos without metadata to avoid timeout`);
+        
+        const videosWithBasicInfo = allVideos.map(video => ({
+          ...video,
+          metadata: {
+            ...video.metadata,
+            size: 0,
+            formattedSize: 'Loading...',
+            contentType: 'video/mp4',
+          },
+        }));
+
+        return NextResponse.json({
+          generations: videosWithBasicInfo,
+          total_count: videosWithBasicInfo.length,
+          has_more: allVideos.length >= maxVideos,
+          fetched_count: allVideos.length,
+          max_videos: maxVideos,
+          metadata_skipped: true,
+        });
+      }
+      
+      // Process metadata for smaller collections or when explicitly requested
       const videoUrls = allVideos
         .filter(video => video.assets?.video)
         .map(video => video.assets!.video!);
@@ -36,7 +61,7 @@ export async function GET(request: NextRequest) {
       console.log(`Processing metadata for ${videoUrls.length} videos...`);
       
       // Get metadata in batches to prevent EMFILE errors
-      const metadataResults = await lumaService.getBatchVideoMetadata(videoUrls, 8); // Optimized batch size
+      const metadataResults = await lumaService.getBatchVideoMetadata(videoUrls, 8);
       
       // Combine videos with their metadata
       const videosWithMetadata = allVideos.map((video, index) => {
@@ -60,7 +85,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         generations: videosWithMetadata,
         total_count: videosWithMetadata.length,
-        has_more: allVideos.length >= maxVideos, // Indicate if there might be more
+        has_more: allVideos.length >= maxVideos,
         fetched_count: allVideos.length,
         max_videos: maxVideos,
       });

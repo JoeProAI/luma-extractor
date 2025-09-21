@@ -69,18 +69,24 @@ export default function HomePage() {
   const fetchVideos = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/luma/generations?fetchAll=true');
+      // For large collections, skip metadata initially to avoid timeouts
+      const response = await fetch('/api/luma/generations?fetchAll=true&skipMetadata=true');
       const data = await response.json();
       
       if (response.ok) {
         setVideos(data.generations || []);
         setTotalCount(data.total_count || 0);
         
-        // Calculate total size
+        // Calculate total size (will be 0 initially if metadata was skipped)
         const size = data.generations?.reduce((sum: number, video: LumaGeneration) => {
           return sum + (video.metadata?.size || 0);
         }, 0) || 0;
         setTotalSize(size);
+
+        // Show success message for large collections
+        if (data.metadata_skipped && data.total_count > 1000) {
+          console.log(`Successfully loaded ${data.total_count} videos! File sizes will load in the background.`);
+        }
       } else {
         console.error('Failed to fetch videos:', data.error);
       }
