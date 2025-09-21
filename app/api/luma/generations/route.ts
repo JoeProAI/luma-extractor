@@ -43,6 +43,8 @@ export async function GET(request: NextRequest) {
           },
         }));
 
+        console.log(`API Response: ${videosWithBasicInfo.length} videos prepared for frontend`);
+        
         return NextResponse.json({
           generations: videosWithBasicInfo,
           total_count: videosWithBasicInfo.length,
@@ -50,6 +52,7 @@ export async function GET(request: NextRequest) {
           fetched_count: allVideos.length,
           max_videos: maxVideos,
           metadata_skipped: true,
+          success: true,
         });
       }
       

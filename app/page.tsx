@@ -74,6 +74,9 @@ export default function HomePage() {
       const data = await response.json();
       
       if (response.ok) {
+        console.log('API Response received:', data);
+        console.log('Number of videos in response:', data.generations?.length || 0);
+        
         setVideos(data.generations || []);
         setTotalCount(data.total_count || 0);
         
@@ -85,10 +88,15 @@ export default function HomePage() {
 
         // Show success message for large collections
         if (data.metadata_skipped && data.total_count > 1000) {
-          console.log(`Successfully loaded ${data.total_count} videos! File sizes will load in the background.`);
+          console.log(`✅ Successfully loaded ${data.total_count} videos! File sizes will load in the background.`);
+        }
+        
+        if (data.generations?.length === 0) {
+          console.warn('⚠️ API returned 0 videos despite successful response');
         }
       } else {
-        console.error('Failed to fetch videos:', data.error);
+        console.error('❌ Failed to fetch videos:', data.error);
+        alert(`Failed to load videos: ${data.error}`);
       }
     } catch (error) {
       console.error('Error fetching videos:', error);
