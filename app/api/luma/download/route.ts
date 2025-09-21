@@ -24,8 +24,9 @@ export async function POST(request: NextRequest) {
 
     const lumaService = new LumaService(apiKey);
     
-    // Fetch all generations to get the requested videos
-    const allVideos = await lumaService.fetchAllVideoGenerations();
+    // For large collections, limit the search to avoid timeouts
+    const maxVideos = Math.min(videoIds.length * 10, 2000); // Search reasonable range
+    const allVideos = await lumaService.fetchAllVideoGenerations(maxVideos);
     const requestedVideos = allVideos.filter(video => videoIds.includes(video.id));
 
     if (requestedVideos.length === 0) {
@@ -36,19 +37,31 @@ export async function POST(request: NextRequest) {
     }
 
     if (format === 'zip') {
-      // Create a ZIP file containing all videos
+      // For large collections, ZIP download is not practical due to size and timeout limits
+      // Instead, return an error suggesting to use individual links
+      if (requestedVideos.length > 10) {
+        return NextResponse.json({
+          error: `ZIP download not supported for ${requestedVideos.length} videos. Please use "Download Links" option instead for large collections.`,
+          suggestion: 'Use the "Download Links" option to get direct URLs for all videos.'
+        }, { status: 400 });
+      }
+
+      // For small collections (≤10 videos), create ZIP
       const zip = new JSZip();
       let totalSize = 0;
+      let successCount = 0;
 
       for (const video of requestedVideos) {
         if (!video.assets?.video) continue;
         
         try {
+          console.log(`Downloading video ${video.id}...`);
           const buffer = await lumaService.downloadVideo(video.assets.video);
           const filename = lumaService.generateFilename(video);
           
           zip.file(filename, buffer);
           totalSize += buffer.length;
+          successCount++;
         } catch (error) {
           console.error(`Failed to download video ${video.id}:`, error);
           // Add error info to zip
@@ -56,10 +69,17 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      if (successCount === 0) {
+        return NextResponse.json({
+          error: 'Failed to download any videos. Please try individual links instead.'
+        }, { status: 500 });
+      }
+
       // Add metadata file
       const metadata = {
         downloadDate: new Date().toISOString(),
         totalVideos: requestedVideos.length,
+        successfulDownloads: successCount,
         totalSize: lumaService.formatFileSize(totalSize),
         videos: requestedVideos.map(video => ({
           id: video.id,
@@ -89,35 +109,25 @@ export async function POST(request: NextRequest) {
       });
 
     } else {
-      // Return individual download links
-      const downloadLinks = await Promise.all(
-        requestedVideos.map(async (video) => {
-          if (!video.assets?.video) return null;
-          
-          try {
-            const metadata = await lumaService.getVideoMetadata(video.assets.video);
-            return {
-              id: video.id,
-              filename: lumaService.generateFilename(video),
-              url: video.assets.video,
-              size: metadata.size,
-              formattedSize: lumaService.formatFileSize(metadata.size),
-              created_at: video.created_at,
-              prompt: video.prompt,
-            };
-          } catch (error) {
-            console.error(`Error getting metadata for video ${video.id}:`, error);
-            return null;
-          }
-        })
-      );
-
-      const validLinks = downloadLinks.filter(Boolean);
+      // Return individual download links (much faster, no metadata fetching)
+      const downloadLinks = requestedVideos
+        .filter(video => video.assets?.video)
+        .map(video => ({
+          id: video.id,
+          filename: lumaService.generateFilename(video),
+          url: video.assets.video,
+          size: 0, // Skip metadata for speed
+          formattedSize: 'Unknown',
+          created_at: video.created_at,
+          prompt: video.prompt || 'No prompt available',
+          downloadInstructions: 'Right-click the URL and select "Save link as..." to download'
+        }));
 
       return NextResponse.json({
         success: true,
-        total: validLinks.length,
-        downloads: validLinks,
+        total: downloadLinks.length,
+        downloads: downloadLinks,
+        note: 'Use these direct URLs to download videos individually. Right-click each URL and select "Save link as..."'
       });
     }
 
